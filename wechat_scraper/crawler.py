@@ -160,11 +160,11 @@ class WeChatCrawler:
                 time.sleep(delay)
                 
             except RateLimitError:
-                logger.warning(f"在第 {page + 1} 页触发频率限制，停止抓取")
-                raise
+                logger.warning(f"在第 {page + 1} 页触发频率限制，停止抓取，返回已获取的 {len(all_articles)} 篇文章")
+                return all_articles, True
             except Exception as e:
                 logger.error(f"抓取第 {page + 1} 页时出错: {e}")
                 break
         
         logger.info(f"抓取完成，共获取 {len(all_articles)} 篇文章")
-        return all_articles
+        return all_articles, False

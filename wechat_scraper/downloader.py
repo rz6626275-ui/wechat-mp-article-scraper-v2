@@ -86,14 +86,30 @@ class WeChatDownloader:
                 content_div = soup.find("div", {"id": "img-content"})
 
             if not content_div:
+                # Fallback 1: Try to find the main content area by common classes
+                content_div = soup.find("div", {"class": "rich_media_area_primary_inner"})
+            
+            if not content_div:
+                # Fallback 2: Try to find the body if it's simple
+                body = soup.find("body")
+                if body and len(body.get_text(strip=True)) > 20:
+                    content_div = body
+
+            if not content_div:
                 # 检查是否是验证页面或错误页面
                 if "验证" in soup.title.text if soup.title else "":
                     error_msg = f"遇到验证页面: {title}"
                 elif "访问受限" in soup.text:
                     error_msg = f"访问受限: {title}"
                 else:
-                    debug_content = soup.prettify()[:500].replace("\n", " ")
-                    error_msg = f"无法找到内容: {title}. 页面预览: {debug_content}..."
+                    # Save debug HTML
+                    debug_filename = f"debug_failed_{sanitize_filename(title)}_{int(time.time())}.html"
+                    debug_path = os.path.join(self.output_dir, "debug", debug_filename)
+                    create_dir(os.path.dirname(debug_path))
+                    with open(debug_path, "w", encoding="utf-8") as f:
+                        f.write(response.text)
+                        
+                    error_msg = f"无法找到内容: {title}. 已保存调试文件: {debug_path}"
                 
                 logger.error(error_msg)
                 self.db.mark_article_failed(article_id, error_msg)

@@ -113,7 +113,16 @@ class Database:
         ''', (name, fakeid, nickname, alias))
         
         conn.commit()
+        
+        # 注意: 当触发 ON CONFLICT 时, lastrowid 会返回 0
+        # 因此需要手动查询 account_id
         account_id = cursor.lastrowid
+        if account_id == 0:
+            cursor.execute("SELECT id FROM accounts WHERE name = ?", (name,))
+            result = cursor.fetchone()
+            if result:
+                account_id = result[0]
+        
         conn.close()
         return account_id
     

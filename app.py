@@ -541,11 +541,17 @@ def process_account(account_name, pages):
         
         # 获取文章列表
         try:
-            articles = crawler_instance.fetch_all_articles(fakeid, max_pages=int(pages))
-        except RateLimitError as e:
-            db.record_rate_limit(account_name)
+            articles, is_rate_limited = crawler_instance.fetch_all_articles(fakeid, max_pages=int(pages))
+            
+            if is_rate_limited:
+                db.record_rate_limit(account_name)
+                yield f"⚠️ 触发频率限制！已暂停抓取，将处理已获取的 {len(articles)} 篇文章。\n"
+                yield f"注意：请等待30分钟后再尝试抓取剩余文章。\n"
+                
+        except Exception as e:
+            # 其他错误仍然抛出
             db.complete_task(task_id, 'failed', str(e))
-            yield f"⚠️ 触发频率限制！请等待30分钟后再试。\n"
+            yield f"错误: {e}\n"
             return
         
         yield f"找到 {len(articles)} 篇文章\n"
