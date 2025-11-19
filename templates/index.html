@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号抓取工具 V2</title>
+    <style>
+        :root {
+            --primary-color: #07c160;
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --border-color: #e0e0e0;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --input-bg: #ffffff;
+            --hover-bg: #f9fafb;
+        }
+
+        [data-theme="dark"] {
+            --primary-color: #10b981;
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-color: #e0e0e0;
+            --border-color: #404040;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --input-bg: #3a3a3a;
+            --hover-bg: #3a3a3a;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .header .version {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        textarea {
+            height: 150px;
+            resize: vertical;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #06ad56;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background-color: #6b7280;
+            width: auto;
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
+        button.secondary:hover:not(:disabled) {
+            background-color: #4b5563;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .status-online {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-offline {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-limited {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            border-bottom-color: var(--primary-color);
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 24px;
+            background-color: #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), #10b981);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card.success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .stat-card.warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .stat-card.error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .account-tag {
+            display: inline-block;
+            background: #e0f2fe;
+            color: #075985;
+            padding: 6px 12px;
+            border-radius: 4px;
+            margin: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .account-tag:hover {
+            background: #0284c7;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .article-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .article-item {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .article-item:hover {
+            background: #f9fafb;
+        }
+
+        .article-title {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .article-meta {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .countdown {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--error-color);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>微信公众号文章抓取工具 V2.0</h1>
+            <div class="status-badge" id="login-status">正在检查登录状态...</div>
+            <div id="rate-limit-status"></div>
+        </div>
+
+        <!-- 搜索和工具栏 -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                <input type="text" id="searchInput" placeholder="搜索文章标题或内容..."
+                    style="flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; height: 40px;"
+                    onkeypress="if(event.keyCode===13) searchArticles()" onfocus="showSearchHistory()"
+                    onblur="setTimeout(hideSearchHistory, 200)">
+                <button onclick="searchArticles()" class="primary"
+                    style="width: auto; padding: 8px 20px; font-size: 14px; height: 40px; white-space: nowrap;">
+                    🔍 搜索
+                </button>
+                <button onclick="window.location.href='/api/export'" class="secondary"
+                    style="width: auto; padding: 8px 20px; font-size: 14px; height: 40px; white-space: nowrap;">
+                    📥 导出 Excel
+                </button>
+                <button onclick="toggleDarkMode()" class="secondary" id="themeToggle"
+                    style="width: auto; padding: 8px 20px; font-size: 14px; height: 40px; white-space: nowrap;">
+                    🌙 深色
+                </button>
+            </div>
+
+            <!-- 搜索历史 -->
+            <div id="searchHistory"
+                style="display: none; background: var(--hover-bg); padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 13px; color: #666;">搜索历史</span>
+                    <button onclick="clearSearchHistory()" class="secondary"
+                        style="padding: 2px 8px; font-size: 12px;">清除</button>
+                </div>
+                <div id="searchHistoryList" style="display: flex; flex-wrap: wrap; gap: 5px;"></div>
+            </div>
+
+            <!-- 高级搜索选项 -->
+            <div id="advancedSearch"
+                style="display: none; background: var(--hover-bg); padding: 15px; border-radius: 4px; margin-bottom: 10px;">
+                <h4 style="margin: 0 0 10px 0;">高级搜索</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                    <div>
+                        <label style="font-size: 13px; color: #666;">公众号</label>
+                        <select id="filterAccount"
+                            style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text-color);">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; color: #666;">开始日期</label>
+                        <input type="date" id="filterDateFrom"
+                            style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text-color);">
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; color: #666;">结束日期</label>
+                        <input type="date" id="filterDateTo"
+                            style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text-color);">
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; color: #666;">排序方式</label>
+                        <select id="sortBy"
+                            style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text-color);">
+                            <option value="date_desc">日期降序</option>
+                            <option value="date_asc">日期升序</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; color: #666;">状态筛选</label>
+                        <select id="filterStatus"
+                            style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text-color);">
+                            <option value="">全部</option>
+                            <option value="favorite">仅收藏</option>
+                            <option value="unread">仅未读</option>
+                            <option value="read">仅已读</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button onclick="applyAdvancedSearch()" class="primary"
+                            style="width: 100%; padding: 6px;">应用筛选</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 批量操作工具栏 -->
+            <div id="batchToolbar"
+                style="display: none; background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #ffc107;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span id="selectedCount" style="font-weight: bold;">已选择 0 篇文章</span>
+                    <div style="display: flex; gap: 5px;">
+                        <button onclick="batchMarkRead(true)" class="secondary"
+                            style="padding: 4px 12px; font-size: 13px;">标记已读</button>
+                        <button onclick="batchMarkRead(false)" class="secondary"
+                            style="padding: 4px 12px; font-size: 13px;">标记未读</button>
+                        <button onclick="batchDelete()" class="secondary"
+                            style="padding: 4px 12px; font-size: 13px; background: #dc3545; color: white;">删除</button>
+                        <button onclick="clearSelection()" class="secondary"
+                            style="padding: 4px 12px; font-size: 13px;">取消选择</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="searchResults" style="margin-top: 15px; display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="margin: 0;">搜索结果</h3>
+                    <div>
+                        <button onclick="toggleAdvancedSearch()" class="secondary"
+                            style="padding: 6px 12px; font-size: 13px;">⚙️ 高级选项</button>
+                        <button onclick="toggleBatchMode()" class="secondary" id="batchModeBtn"
+                            style="padding: 6px 12px; font-size: 13px;">☑️ 批量操作</button>
+                    </div>
+                </div>
+                <div class="article-list" id="searchResultList"></div>
+            </div>
+        </div>
+
+        <!-- 统计面板 -->
+        <div class="card" id="stats-panel" style="display:none;">
+            <h3>📊 实时统计</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">总文章数</div>
+                    <div class="stat-value" id="stat-total">0</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-label">已下载</div>
+                    <div class="stat-value" id="stat-success">0</div>
+                </div>
+                <div class="stat-card error">
+                    <div class="stat-label">失败</div>
+                    <div class="stat-value" id="stat-failed">0</div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="stat-label">进度</div>
+                    <div class="stat-value" id="stat-progress">0%</div>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%;">0%</div>
+            </div>
+        </div>
+
+        <!-- 抓取任务 -->
+        <div class="card">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('single')">单号抓取</div>
+                <div class="tab" onclick="switchTab('batch')">批量抓取</div>
+            </div>
+
+            <div id="single" class="tab-content active">
+                <div class="form-group">
+                    <label>公众号名称</label>
+                    <input type="text" id="account_name" placeholder="例如：36氪">
+                </div>
+                <div class="form-group">
+                    <label>抓取页数</label>
+                    <input type="number" id="pages" value="1" min="1" max="10">
+                </div>
+                <button onclick="startSingleTask()" id="btn-single">开始抓取</button>
+            </div>
+
+            <div id="batch" class="tab-content">
+                <div class="form-group">
+                    <label>公众号列表 (每行一个)</label>
+                    <textarea id="account_list" placeholder="36氪&#10;虎嗅APP&#10;差评"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>统一抓取页数</label>
+                    <input type="number" id="batch_pages" value="1" min="1" max="5">
+                </div>
+                <button onclick="startBatchTask()" id="btn-batch">开始批量抓取</button>
+            </div>
+        </div>
+
+        <!-- 运行日志 -->
+        <div class="card">
+            <h3>📝 运行日志</h3>
+            <div class="log-container" id="log-area">等待任务开始...</div>
+        </div>
+
+        <!-- 已抓取公众号 -->
+        <div class="card">
+            <h3>📚 已抓取公众号 <button onclick="loadAccounts()" class="secondary">刷新</button></h3>
+            <div id="account-list">
+                <p style="color: #999;">加载中...</p>
+            </div>
+        </div>
+
+        <!-- 文章预览 -->
+        <div class="card" id="article-preview" style="display:none;">
+            <h3>📄 文章列表 <button onclick="closeArticles()" class="secondary">关闭</button></h3>
+            <div class="article-list" id="article-list-content"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentStats = { total: 0, success: 0, failed: 0 };
+
+        // ========== 搜索历史管理 ==========
+        function getSearchHistory() {
+            const history = localStorage.getItem('searchHistory');
+            return history ? JSON.parse(history) : [];
+        }
+
+        function saveSearchHistory(query) {
+            let history = getSearchHistory();
+            history = history.filter(h => h !== query); // 移除重复
+            history.unshift(query); // 添加到开头
+            history = history.slice(0, 10); // 只保留最近10条
+            localStorage.setItem('searchHistory', JSON.stringify(history));
+        }
+
+        function showSearchHistory() {
+            const history = getSearchHistory();
+            const historyDiv = document.getElementById('searchHistory');
+            const historyList = document.getElementById('searchHistoryList');
+
+            if (history.length === 0) {
+                historyDiv.style.display = 'none';
+                return;
+            }
+
+            historyList.innerHTML = '';
+            history.forEach(item => {
+                const tag = document.createElement('span');
+                tag.className = 'account-tag';
+                tag.textContent = item;
+                tag.style.cursor = 'pointer';
+                tag.onclick = () => {
+                    document.getElementById('searchInput').value = item;
+                    searchArticles();
+                };
+                historyList.appendChild(tag);
+            });
+
+            historyDiv.style.display = 'block';
+        }
+
+        function hideSearchHistory() {
+            document.getElementById('searchHistory').style.display = 'none';
+        }
+
+        function clearSearchHistory() {
+            localStorage.removeItem('searchHistory');
+            document.getElementById('searchHistoryList').innerHTML = '';
+            document.getElementById('searchHistory').style.display = 'none';
+        }
+
+        // ========== 深色模式 ==========
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+
+            const btn = document.getElementById('themeToggle');
+            btn.textContent = newTheme === 'dark' ? '☀️ 浅色' : '🌙 深色';
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            const btn = document.getElementById('themeToggle');
+            if (btn) {
+                btn.textContent = savedTheme === 'dark' ? '☀️ 浅色' : '🌙 深色';
+            }
+        }
+
+        // ========== 快捷键支持 ==========
+        document.addEventListener('keydown', function (e) {
+            // Ctrl/Cmd + F: 聚焦搜索框
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                document.getElementById('searchInput').focus();
+            }
+
+            // Esc: 关闭搜索结果
+            if (e.key === 'Escape') {
+                document.getElementById('searchResults').style.display = 'none';
+                hideSearchHistory();
+            }
+        });
+
+        // ========== 搜索功能 ==========
+        async function searchArticles() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) return;
+
+            // 保存到搜索历史
+            saveSearchHistory(query);
+
+            const btn = document.querySelector('button[onclick="searchArticles()"]');
+            const originalText = btn.innerText;
+            btn.innerText = "搜索中...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const articles = await response.json();
+
+                const resultList = document.getElementById('searchResultList');
+                const resultsDiv = document.getElementById('searchResults');
+
+                resultList.innerHTML = '';
+                resultsDiv.style.display = 'block';
+
+                if (articles.length === 0) {
+                    resultList.innerHTML = '<div class="article-item">未找到相关文章</div>';
+                } else {
+                    articles.forEach(article => {
+                        const div = document.createElement('div');
+                        div.className = 'article-item';
+
+                        // 批量模式下添加复选框
+                        const checkbox = window.batchMode ? `<input type="checkbox" class="article-checkbox" data-id="${article.id}" onchange="updateSelection()" style="margin-right: 10px;">` : '';
+
+                        // 状态图标
+                        const favoriteIcon = article.is_favorite ? '⭐' : '☆';
+                        const readIcon = article.is_read ? '✓' : '○';
+
+                        div.innerHTML = `
+                            ${checkbox}
+                            <div style="flex: 1;">
+                                <div class="article-title">${article.title}</div>
+                                <div class="article-meta">
+                                    ${article.account_name} | ${article.publish_date} | 
+                                    ${article.downloaded ? '<span style="color:green">已下载</span>' : '<span style="color:gray">未下载</span>'}
+                                    <span style="margin-left: 10px; cursor: pointer;" onclick="toggleFavorite(${article.id}, event)" title="收藏">${favoriteIcon}</span>
+                                    <span style="margin-left: 5px; cursor: pointer;" onclick="toggleRead(${article.id}, event)" title="已读">${readIcon}</span>
+                                </div>
+                            </div>
+                        `;
+                        div.onclick = (e) => {
+                            if (e.target.type !== 'checkbox' && !e.target.onclick) {
+                                if (article.downloaded && article.local_path) {
+                                    const filename = `${article.account_name}/${article.local_path.split('/').pop()}`;
+                                    window.open(`/output/${filename}?highlight=${encodeURIComponent(query)}`, '_blank');
+                                } else {
+                                    window.open(article.link, '_blank');
+                                }
+                            }
+                        };
+                        resultList.appendChild(div);
+                    });
+                }
+            } catch (error) {
+                console.error('搜索失败:', error);
+                alert('搜索失败，请查看控制台');
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // ========== 高级搜索 ==========
+        let selectedArticles = new Set();
+        window.batchMode = false;
+
+        function toggleAdvancedSearch() {
+            const panel = document.getElementById('advancedSearch');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+
+            // 加载公众号列表
+            if (panel.style.display === 'block') {
+                loadAccountsForFilter();
+            }
+        }
+
+        async function loadAccountsForFilter() {
+            try {
+                const response = await fetch('/api/accounts');
+                const data = await response.json();
+                const select = document.getElementById('filterAccount');
+                select.innerHTML = '<option value="">全部</option>';
+                data.accounts.forEach(acc => {
+                    const option = document.createElement('option');
+                    option.value = acc.id;
+                    option.textContent = acc.name;
+                    select.appendChild(option);
+                });
+            } catch (e) {
+                console.error('加载公众号列表失败:', e);
+            }
+        }
+
+        async function applyAdvancedSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            const accountId = document.getElementById('filterAccount').value;
+            const dateFrom = document.getElementById('filterDateFrom').value;
+            const dateTo = document.getElementById('filterDateTo').value;
+            const sortBy = document.getElementById('sortBy').value;
+            const filterStatus = document.getElementById('filterStatus').value;
+
+            let isFavorite = null;
+            let isRead = null;
+            if (filterStatus === 'favorite') isFavorite = true;
+            else if (filterStatus === 'read') isRead = true;
+            else if (filterStatus === 'unread') isRead = false;
+
+            const [sort, order] = sortBy.split('_');
+
+            try {
+                const response = await fetch('/api/search/advanced', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query, account_id: accountId || null, date_from: dateFrom || null,
+                        date_to: dateTo || null, sort_by: sort, order, is_favorite: isFavorite,
+                        is_read: isRead, limit: 100
+                    })
+                });
+                const articles = await response.json();
+                displaySearchResults(articles, query);
+            } catch (e) {
+                console.error('高级搜索失败:', e);
+                alert('搜索失败');
+            }
+        }
+
+        function displaySearchResults(articles, query) {
+            const resultList = document.getElementById('searchResultList');
+            const resultsDiv = document.getElementById('searchResults');
+            resultList.innerHTML = '';
+            resultsDiv.style.display = 'block';
+
+            if (articles.length === 0) {
+                resultList.innerHTML = '<div class="article-item">未找到相关文章</div>';
+                return;
+            }
+
+            articles.forEach(article => {
+                const div = document.createElement('div');
+                div.className = 'article-item';
+                const checkbox = window.batchMode ? `<input type="checkbox" class="article-checkbox" data-id="${article.id}" onchange="updateSelection()" style="margin-right: 10px;">` : '';
+                const favoriteIcon = article.is_favorite ? '⭐' : '☆';
+                const readIcon = article.is_read ? '✓' : '○';
+
+                div.innerHTML = `
+                    ${checkbox}
+                    <div style="flex: 1;">
+                        <div class="article-title">${article.title}</div>
+                        <div class="article-meta">
+                            ${article.account_name} | ${article.publish_date} | 
+                            ${article.downloaded ? '<span style="color:green">已下载</span>' : '<span style="color:gray">未下载</span>'}
+                            <span style="margin-left: 10px; cursor: pointer;" onclick="toggleFavorite(${article.id}, event)" title="收藏">${favoriteIcon}</span>
+                            <span style="margin-left: 5px; cursor: pointer;" onclick="toggleRead(${article.id}, event)" title="已读">${readIcon}</span>
+                        </div>
+                    </div>
+                `;
+                div.onclick = (e) => {
+                    if (e.target.type !== 'checkbox' && !e.target.onclick) {
+                        if (article.downloaded && article.local_path) {
+                            const filename = `${article.account_name}/${article.local_path.split('/').pop()}`;
+                            window.open(`/output/${filename}?highlight=${encodeURIComponent(query || '')}`, '_blank');
+                        } else {
+                            window.open(article.link, '_blank');
+                        }
+                    }
+                };
+                resultList.appendChild(div);
+            });
+        }
+
+        // ========== 批量操作 ==========
+        function toggleBatchMode() {
+            window.batchMode = !window.batchMode;
+            const btn = document.getElementById('batchModeBtn');
+            btn.textContent = window.batchMode ? '✓ 批量模式' : '☑️ 批量操作';
+
+            // 重新渲染搜索结果以显示/隐藏复选框
+            const query = document.getElementById('searchInput').value;
+            if (query) searchArticles();
+
+            // 显示/隐藏批量工具栏
+            if (!window.batchMode) {
+                document.getElementById('batchToolbar').style.display = 'none';
+                selectedArticles.clear();
+            }
+        }
+
+        function updateSelection() {
+            selectedArticles.clear();
+            document.querySelectorAll('.article-checkbox:checked').forEach(cb => {
+                selectedArticles.add(parseInt(cb.dataset.id));
+            });
+
+            const count = selectedArticles.size;
+            document.getElementById('selectedCount').textContent = `已选择 ${count} 篇文章`;
+            document.getElementById('batchToolbar').style.display = count > 0 ? 'block' : 'none';
+        }
+
+        function clearSelection() {
+            selectedArticles.clear();
+            document.querySelectorAll('.article-checkbox').forEach(cb => cb.checked = false);
+            updateSelection();
+        }
+
+        async function batchMarkRead(isRead) {
+            if (selectedArticles.size === 0) return;
+
+            try {
+                await fetch('/api/articles/batch/read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: Array.from(selectedArticles), is_read: isRead })
+                });
+                alert(`已标记 ${selectedArticles.size} 篇文章为${isRead ? '已读' : '未读'}`);
+                clearSelection();
+                searchArticles();
+            } catch (e) {
+                alert('操作失败');
+            }
+        }
+
+        async function batchDelete() {
+            if (selectedArticles.size === 0) return;
+            if (!confirm(`确定要删除选中的 ${selectedArticles.size} 篇文章吗？`)) return;
+
+            try {
+                await fetch('/api/articles/batch/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: Array.from(selectedArticles) })
+                });
+                alert(`已删除 ${selectedArticles.size} 篇文章`);
+                clearSelection();
+                searchArticles();
+            } catch (e) {
+                alert('删除失败');
+            }
+        }
+
+        async function toggleFavorite(id, event) {
+            event.stopPropagation();
+            try {
+                await fetch(`/api/articles/${id}/favorite`, { method: 'POST' });
+                searchArticles();
+            } catch (e) {
+                console.error('收藏失败:', e);
+            }
+        }
+
+        async function toggleRead(id, event) {
+            event.stopPropagation();
+            try {
+                await fetch(`/api/articles/${id}/read`, { method: 'POST' });
+                searchArticles();
+            } catch (e) {
+                console.error('标记失败:', e);
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        function appendLog(message) {
+            const logArea = document.getElementById('log-area');
+            const time = new Date().toLocaleTimeString();
+            logArea.innerHTML += `[${time}] ${message}\n`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function updateStats(total, success, failed) {
+            currentStats = { total, success, failed };
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-success').textContent = success;
+            document.getElementById('stat-failed').textContent = failed;
+
+            const progress = total > 0 ? Math.round(((success + failed) / total) * 100) : 0;
+            document.getElementById('stat-progress').textContent = progress + '%';
+            document.getElementById('progress-fill').style.width = progress + '%';
+            document.getElementById('progress-fill').textContent = progress + '%';
+
+            document.getElementById('stats-panel').style.display = 'block';
+        }
+
+        async function checkLogin() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                const statusDiv = document.getElementById('login-status');
+                const rateLimitDiv = document.getElementById('rate-limit-status');
+
+                if (data.logged_in) {
+                    statusDiv.innerHTML = '<span class="status-badge status-online">✓ 已登录</span>';
+                } else {
+                    statusDiv.innerHTML = '<span class="status-badge status-offline">✗ 未登录</span>';
+                }
+
+                // 检查频率限制
+                if (data.rate_limit && data.rate_limit.limited) {
+                    const remaining = data.rate_limit.remaining_seconds;
+                    const minutes = Math.floor(remaining / 60);
+                    const seconds = remaining % 60;
+                    rateLimitDiv.innerHTML = `<span class="status-badge status-limited">⚠️ 频率限制中</span> <span class="countdown">${minutes}:${seconds.toString().padStart(2, '0')}</span>`;
+                } else {
+                    rateLimitDiv.innerHTML = '';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function relogin() {
+            if (!confirm("确定要清除 Cookies 并重新登录吗？请关注终端进行扫码。")) return;
+            appendLog("正在清除 Cookies 并重新登录，请关注终端输出...");
+            await fetch('/api/relogin', { method: 'POST' });
+            checkLogin();
+        }
+
+        async function loadAccounts() {
+            try {
+                const res = await fetch('/api/accounts');
+                const data = await res.json();
+                const listDiv = document.getElementById('account-list');
+
+                if (data.accounts.length === 0) {
+                    listDiv.innerHTML = '<p style="color: #999;">暂无抓取记录</p>';
+                    return;
+                }
+
+                let html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">';
+                data.accounts.forEach(acc => {
+                    html += `<span class="account-tag" onclick="fillAccount('${acc.name}')" title="点击填充 | 双击查看文章" ondblclick="viewArticles(${acc.id}, '${acc.name}')">${acc.name} (${acc.total_articles || 0})</span>`;
+                });
+                html += '</div>';
+                listDiv.innerHTML = html;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function fillAccount(name) {
+            document.getElementById('account_name').value = name;
+            document.querySelectorAll('.tab')[0].click();
+            appendLog(`已填充公众号: ${name}`);
+        }
+
+        async function viewArticles(accountId, accountName) {
+            try {
+                const res = await fetch(`/api/articles/${accountId}`);
+                const data = await res.json();
+                const previewDiv = document.getElementById('article-preview');
+                const contentDiv = document.getElementById('article-list-content');
+
+                if (data.articles.length === 0) {
+                    contentDiv.innerHTML = '<p style="color: #999;">暂无文章</p>';
+                } else {
+                    let html = '';
+                    data.articles.forEach(art => {
+                        const status = art.downloaded ? '✓' : '✗';
+                        const statusColor = art.downloaded ? 'var(--success-color)' : '#999';
+                        html += `
+                            <div class="article-item" onclick="window.open('${art.filepath || art.link}', '_blank')">
+                                <div class="article-title" style="color: ${statusColor}">${status} ${art.title}</div>
+                                <div class="article-meta">${art.publish_date || '未知日期'} | ${art.status}</div>
+                            </div>
+                        `;
+                    });
+                    contentDiv.innerHTML = html;
+                }
+
+                previewDiv.style.display = 'block';
+                previewDiv.scrollIntoView({ behavior: 'smooth' });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function closeArticles() {
+            document.getElementById('article-preview').style.display = 'none';
+        }
+
+        async function startSingleTask() {
+            const name = document.getElementById('account_name').value;
+            const pages = document.getElementById('pages').value;
+            if (!name) return alert('请输入公众号名称');
+
+            document.getElementById('btn-single').disabled = true;
+            appendLog(`开始抓取任务: ${name}, ${pages}页`);
+            updateStats(0, 0, 0);
+
+            try {
+                const res = await fetch('/api/scrape', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'single', name, pages })
+                });
+
+                const reader = res.body.getReader();
+                let total = 0, success = 0, failed = 0;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const text = new TextDecoder().decode(value);
+                    appendLog(text);
+
+                    // 解析统计信息
+                    if (text.includes('找到') && text.includes('篇文章')) {
+                        const match = text.match(/找到 (\d+) 篇文章/);
+                        if (match) total = parseInt(match[1]);
+                        updateStats(total, success, failed);
+                    }
+                    if (text.includes('✓ 完成')) success++;
+                    if (text.includes('✗ 失败')) failed++;
+                    updateStats(total, success, failed);
+                }
+            } catch (e) {
+                appendLog("任务出错: " + e);
+            }
+
+            document.getElementById('btn-single').disabled = false;
+            loadAccounts();
+        }
+
+        async function startBatchTask() {
+            const list = document.getElementById('account_list').value;
+            const pages = document.getElementById('batch_pages').value;
+            if (!list) return alert('请输入公众号列表');
+
+            const accounts = list.split('\n').map(s => s.trim()).filter(s => s);
+            if (accounts.length === 0) return alert('列表为空');
+
+            document.getElementById('btn-batch').disabled = true;
+            appendLog(`开始批量任务: 共 ${accounts.length} 个公众号`);
+            updateStats(0, 0, 0);
+
+            try {
+                const res = await fetch('/api/scrape', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'batch', accounts, pages })
+                });
+
+                const reader = res.body.getReader();
+                let total = 0, success = 0, failed = 0;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const text = new TextDecoder().decode(value);
+                    appendLog(text);
+
+                    if (text.includes('找到') && text.includes('篇文章')) {
+                        const match = text.match(/找到 (\d+) 篇文章/);
+                        if (match) total += parseInt(match[1]);
+                        updateStats(total, success, failed);
+                    }
+                    if (text.includes('✓ 完成')) success++;
+                    if (text.includes('✗ 失败')) failed++;
+                    updateStats(total, success, failed);
+                }
+            } catch (e) {
+                appendLog("任务出错: " + e);
+            }
+
+            document.getElementById('btn-batch').disabled = false;
+            loadAccounts();
+        }
+
+        // 初始化
+        initTheme(); // 初始化主题
+        checkLogin();
+        loadAccounts();
+        setInterval(checkLogin, 10000);
+    </script>
+</body>
+
+</html>
