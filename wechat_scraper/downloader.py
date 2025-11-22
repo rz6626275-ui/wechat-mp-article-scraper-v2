@@ -2,6 +2,10 @@ import requests
 import os
 import time
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 from urllib.parse import urljoin
 from .utils import sanitize_filename, create_dir
 from .css_template import WECHAT_CSS
@@ -72,25 +76,60 @@ class WeChatDownloader:
         try:
             logger.info(f"开始下载文章: {title}")
             
+            # 确保使用PC版User-Agent请求微信公众号文章
+            self.headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            # 对于微信文章，需要在请求中添加Referer
+            self.headers["Referer"] = "https://mp.weixin.qq.com/"
+
+            # 首先尝试使用常规requests请求
             response = requests.get(article_url, headers=self.headers, cookies=self.cookies, timeout=30)
             response.raise_for_status()
-            
+
             soup = BeautifulSoup(response.text, "lxml")
+
+            # 检查内容是否足够长，如果太短或找不到js_content，使用Selenium加载完整内容
+            content_div = soup.find("div", {"id": "js_content"})
+            if not content_div or len(str(content_div)) < 1000:
+                logger.info("检测到动态页面，正在使用Selenium重新加载...")
+                # 使用Selenium获取完整页面内容
+                chrome_options = Options()
+                chrome_options.add_argument("--headless")  # 无头模式，不显示浏览器窗口
+                chrome_options.add_argument("--user-agent={}".format(self.headers["User-Agent"]))
+
+                service = Service(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=service, options=chrome_options)
+
+                try:
+                    driver.get(article_url)
+                    time.sleep(3)  # 等待3秒让页面完全加载
+                    html = driver.page_source
+                    soup = BeautifulSoup(html, "lxml")
+                    logger.info("Selenium加载页面成功")
+                finally:
+                    driver.quit()
             
             # Extract content div
             content_div = soup.find("div", {"id": "js_content"})
             if not content_div:
                 content_div = soup.find("div", {"class": "rich_media_content"})
-            
+
             if not content_div:
                 content_div = soup.find("div", {"id": "img-content"})
 
             if not content_div:
                 # Fallback 1: Try to find the main content area by common classes
                 content_div = soup.find("div", {"class": "rich_media_area_primary_inner"})
-            
+
             if not content_div:
-                # Fallback 2: Try to find the body if it's simple
+                # Fallback 2: Try js_base_container (new structure)
+                content_div = soup.find("div", {"id": "js_base_container"})
+
+            if not content_div:
+                # Fallback 3: Try expand article container (new structure)
+                content_div = soup.find("div", {"id": "wx_expand_article"})
+
+            if not content_div:
+                # Fallback 4: Try to find the body if it's simple
                 body = soup.find("body")
                 if body and len(body.get_text(strip=True)) > 20:
                     content_div = body
@@ -137,9 +176,35 @@ class WeChatDownloader:
             content_div['style'] = "visibility: visible !important; opacity: 1 !important;"
             
             # Process images
+            # 从内容容器中查找图片
             imgs = content_div.find_all("img")
-            img_count = len(imgs)
-            logger.debug(f"找到 {img_count} 张图片")
+
+            # 额外检查微信轮播图结构
+            image_swiper_content = soup.find("div", {"id": "img_swiper_content"})
+            if image_swiper_content:
+                swiper_imgs = image_swiper_content.find_all("img")
+                imgs += swiper_imgs
+                logger.debug(f"从轮播图区域额外找到 {len(swiper_imgs)} 张图片")
+
+            # 检查图片内容结构
+            js_image_content = content_div.find("div", {"id": "js_image_content"})
+            if js_image_content:
+                js_imgs = js_image_content.find_all("img")
+                imgs += js_imgs
+                logger.debug(f"从js_image_content区域额外找到 {len(js_imgs)} 张图片")
+
+            # 去重处理，防止重复图片
+            seen = set()
+            unique_imgs = []
+            for img in imgs:
+                src = img.get("src") or img.get("data-src") or img.get("data-lazyload-src")
+                if src and src not in seen:
+                    seen.add(src)
+                    unique_imgs.append(img)
+
+            img_count = len(unique_imgs)
+            logger.debug(f"总共找到 {img_count} 张图片 (已去重)")
+            imgs = unique_imgs
             
             for i, img in enumerate(imgs):
                 src = img.get("data-src")
